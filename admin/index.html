@@ -1,0 +1,194 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Administración | Tani Store Rollers</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: #f5f5f8;
+      color: #242438;
+      font-family: Arial, sans-serif;
+    }
+
+    header {
+      background: #fff;
+      border-bottom: 1px solid #e6e6ee;
+      padding: 18px 5%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .brand { color: #7b4bd4; font-weight: 800; }
+    .container { max-width: 1150px; margin: 30px auto; padding: 0 20px; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+      gap: 24px;
+      align-items: start;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #e8e8ef;
+      border-radius: 14px;
+      padding: 22px;
+      margin-bottom: 20px;
+      min-width: 0;
+    }
+
+    h1 { font-size: 27px; }
+    h2 { font-size: 19px; margin-top: 0; }
+
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      margin: 16px 0 7px;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 11px;
+      border: 1px solid #dcdce6;
+      border-radius: 8px;
+      font: inherit;
+      background: white;
+    }
+
+    textarea { min-height: 95px; resize: vertical; }
+
+    button, .link-button {
+      padding: 10px 14px;
+      border: 0;
+      border-radius: 8px;
+      background: #7b4bd4;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 14px;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    button:disabled { opacity: .55; cursor: wait; }
+
+    .secondary { background: #ece7f8; color: #55319b; }
+    .danger { background: #b42335; }
+    .neutral { background: #626276; }
+
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .muted { color: #737385; font-size: 14px; line-height: 1.5; }
+    #mensaje { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; }
+
+    .product {
+      display: grid;
+      grid-template-columns: 100px minmax(0, 1fr);
+      gap: 16px;
+      padding: 16px 0;
+      border-bottom: 1px solid #eeeef4;
+    }
+
+    .product:last-child { border-bottom: 0; }
+    .product img { width: 100px; height: 100px; object-fit: cover; border-radius: 10px; background: #f1f1f5; }
+    .product h3 { margin: 0 0 8px; overflow-wrap: anywhere; }
+    .price { font-weight: 700; color: #6840b5; }
+    .status { font-size: 12px; color: #5e4986; }
+
+    @media (max-width: 760px) {
+      .layout { grid-template-columns: 1fr; }
+      .container { padding: 0 14px; margin-top: 18px; }
+      .card { padding: 17px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">TANI STORE ROLLERS · ADMIN</div>
+    <div class="actions" style="margin:0">
+      <a class="link-button secondary" href="../index.html">
+        Ver catálogo
+      </a>
+      <button id="logout" class="neutral">Cerrar sesión</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <h1>Gestión de productos</h1>
+    <p class="muted">
+      Agregá productos, actualizá precios y controlá qué publicaciones
+      aparecen en el catálogo.
+    </p>
+
+    <div class="layout">
+      <section class="card">
+        <h2 id="formTitle">Agregar producto</h2>
+
+        <form id="productForm">
+          <input type="hidden" id="productId">
+
+          <label for="nombre">Nombre del producto *</label>
+          <input id="nombre" maxlength="150" required>
+
+          <label for="descripcion">Descripción</label>
+          <textarea id="descripcion" maxlength="3000"></textarea>
+
+          <label for="precio">Precio en guaraníes *</label>
+          <input id="precio" type="number" min="0" step="1" required>
+
+          <label for="categoria">Categoría</label>
+          <input id="categoria" value="Rollers" maxlength="100">
+
+          <label for="imagen">Fotografía del producto</label>
+          <input id="imagen" type="file"
+            accept="image/jpeg,image/png,image/webp">
+
+          <p class="muted">
+            Formatos JPG, PNG o WebP. Máximo 5 MB.
+            Al editar, podés conservar la fotografía actual.
+          </p>
+
+          <label for="imagenUrl">O URL de imagen existente</label>
+          <input id="imagenUrl" type="url"
+            placeholder="https://...">
+
+          <label>
+            <input id="publicado" type="checkbox"
+              checked style="width:auto">
+            Publicar en el catálogo
+          </label>
+
+          <div class="actions">
+            <button id="saveBtn" type="submit">Guardar producto</button>
+            <button id="cancelBtn" type="button"
+              class="secondary" hidden>Cancelar edición</button>
+          </div>
+
+          <p id="mensaje" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>Productos registrados</h2>
+
+        <label for="filtro">Buscar producto</label>
+        <input id="filtro" placeholder="Buscar por nombre o categoría">
+
+        <div id="productsList" aria-live="polite">
+          Cargando productos...
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script type="module" src="../js/admin.js"></script>
+</body>
+</html>

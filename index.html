@@ -122,7 +122,7 @@
           <option value="name">Nombre: A-Z</option>
         </select>
       </div>
-      <div class="grid" id="product-grid"></div>
+      <div class="grid" id="product-grid"><div class="empty">Cargando productos...</div></div>
     </section>
 
     <section class="how">
@@ -148,47 +148,21 @@
 
   <a class="floating-wa" id="general-whatsapp" href="#" target="_blank" rel="noopener" aria-label="Contactar por WhatsApp">✆</a>
 
-  <script>
-    // EDITÁ ESTA LISTA para agregar, quitar o actualizar productos.
-    // Los precios son ejemplos ficticios: reemplazalos por los precios reales.
-    const WHATSAPP_NUMBER = "595961241109"; // Paraguay: código de país + número, sin + ni espacios.
+  <script type="module">
+    import { supabase } from "./js/supabase.js";
 
-    const products = [
-      {
-        id: 1,
-        name: "Roller Urban Black",
-        category: "Urbano",
-        price: 450000,
-        description: "Diseño negro clásico para salir a rodar con estilo.",
-        badge: "Popular",
-        image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=85",
-        alt: "Imagen de ejemplo de producto deportivo en tonos rojos y negros"
-      },
-      {
-        id: 2,
-        name: "Roller Pink Style",
-        category: "Recreativo",
-        price: 520000,
-        description: "Un estilo suave y moderno para tus paseos.",
-        badge: "Nuevo",
-        image: "https://images.unsplash.com/photo-1495555961986-6d4c1ecb7be3?auto=format&fit=crop&w=900&q=85",
-        alt: "Imagen de ejemplo de calzado deportivo"
-      },
-      {
-        id: 3,
-        name: "Roller Street Pro",
-        category: "Urbano",
-        price: 610000,
-        description: "Una opción con estética deportiva para moverte por la ciudad.",
-        badge: "Estilo urbano",
-        image: "https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?auto=format&fit=crop&w=900&q=85",
-        alt: "Imagen de ejemplo de zapatilla urbana"
-      }
-    ];
-
+    const WHATSAPP_NUMBER = "595961241109";
+    const products = [];
+    const grid = document.getElementById("product-grid");
     const money = new Intl.NumberFormat("es-PY", {
       style: "currency", currency: "PYG", maximumFractionDigits: 0
     });
+
+    function escapeHtml(value = "") {
+      return String(value).replace(/[&<>"']/g, char => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[char]));
+    }
 
     function whatsappLink(product) {
       const message = product
@@ -198,10 +172,8 @@
     }
 
     function renderProducts() {
-      const grid = document.getElementById("product-grid");
       const query = document.getElementById("search").value.trim().toLowerCase();
       const sort = document.getElementById("sort").value;
-
       let filtered = products.filter(p =>
         `${p.name} ${p.category} ${p.description}`.toLowerCase().includes(query)
       );
@@ -214,35 +186,66 @@
         `${filtered.length} ${filtered.length === 1 ? "producto" : "productos"}`;
 
       if (!filtered.length) {
-        grid.innerHTML = '<div class="empty">No encontramos productos con esa búsqueda. Probá con otra palabra.</div>';
+        grid.innerHTML = '<div class="empty">No encontramos productos publicados con esa búsqueda. Probá con otra palabra.</div>';
         return;
       }
 
-      grid.innerHTML = filtered.map(product => `
-        <article class="card">
-          <div class="photo-wrap">
-            <img class="photo" src="${product.image}" alt="${product.alt}" loading="lazy"
-              onerror="this.onerror=null;this.src='https://placehold.co/900x675/f3f4f6/6b7280?text=Foto+del+roller';">
-            ${product.badge ? `<span class="tag">${product.badge}</span>` : ""}
-          </div>
-          <div class="card-body">
-            <div class="category">${product.category}</div>
-            <h3 class="product-title">${product.name}</h3>
-            <p class="description">${product.description}</p>
-            <div class="price">${money.format(product.price)} <small>PYG</small></div>
-            <a class="button button-whatsapp" href="${whatsappLink(product)}" target="_blank" rel="noopener">
-              <span aria-hidden="true">✆</span> Consultar por WhatsApp
-            </a>
-          </div>
-        </article>
-      `).join("");
+      grid.innerHTML = filtered.map(product => {
+        const name = escapeHtml(product.name);
+        const category = escapeHtml(product.category || "Rollers");
+        const description = escapeHtml(product.description || "Consultá más detalles por WhatsApp.");
+        const image = escapeHtml(product.image || "https://placehold.co/900x675/f3f4f6/6b7280?text=Foto+del+roller");
+        return `
+          <article class="card">
+            <div class="photo-wrap">
+              <img class="photo" src="${image}" alt="${name}" loading="lazy"
+                onerror="this.onerror=null;this.src='https://placehold.co/900x675/f3f4f6/6b7280?text=Foto+del+roller';">
+            </div>
+            <div class="card-body">
+              <div class="category">${category}</div>
+              <h3 class="product-title">${name}</h3>
+              <p class="description">${description}</p>
+              <div class="price">${money.format(Number(product.price) || 0)} <small>PYG</small></div>
+              <a class="button button-whatsapp" href="${whatsappLink(product)}" target="_blank" rel="noopener">
+                <span aria-hidden="true">✆</span> Consultar por WhatsApp
+              </a>
+            </div>
+          </article>`;
+      }).join("");
+    }
+
+    async function loadProducts() {
+      grid.innerHTML = '<div class="empty">Cargando productos...</div>';
+      try {
+        const { data, error } = await supabase
+          .from("productos")
+          .select("id, nombre, descripcion, precio, imagen_url, categoria, publicado, created_at")
+          .eq("publicado", true)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        products.splice(0, products.length, ...(data || []).map(item => ({
+          id: item.id,
+          name: item.nombre,
+          category: item.categoria || "Rollers",
+          price: Number(item.precio) || 0,
+          description: item.descripcion || "",
+          image: item.imagen_url || "",
+        })));
+        renderProducts();
+      } catch (error) {
+        console.error("Error al cargar productos desde Supabase:", error);
+        document.getElementById("result-count").textContent = "";
+        grid.innerHTML = '<div class="empty">No pudimos cargar el catálogo en este momento. Verificá la conexión con Supabase e intentá nuevamente.</div>';
+      }
     }
 
     document.getElementById("search").addEventListener("input", renderProducts);
     document.getElementById("sort").addEventListener("change", renderProducts);
     document.getElementById("general-whatsapp").href = whatsappLink(null);
     document.getElementById("year").textContent = new Date().getFullYear();
-    renderProducts();
+    loadProducts();
   </script>
 </body>
 </html>
